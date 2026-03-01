@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL | SQL Mastery</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0d1117;
+            --card-bg: #161b22;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent-orange: #f97316;
+            --accent-blue: #38bdf8;
+            --border-color: #30363d;
+            --code-font: 'Fira Code', monospace;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            padding-top: 80px;
+            padding-bottom: 100px;
+        }
+
+        .ambient-light {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            pointer-events: none; z-index: -1;
+            background: radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.08) 0%, transparent 50%);
+        }
+
+        .progress-container {
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 1000;
+            background: rgba(13, 17, 23, 0.95); backdrop-filter: blur(10px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .progress-info { font-size: 0.9rem; color: var(--text-secondary); font-weight: 600; white-space: nowrap; }
+        .progress-bar-wrapper { flex: 1; min-width: 150px; margin: 0 10px; background: #21262d; height: 6px; border-radius: 3px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: var(--accent-blue); width: 0%; transition: width 0.4s ease; border-radius: 2px; }
+        
+        .reset-btn {
+            background: transparent; border: 1px solid #da3633; color: #da3633;
+            padding: 4px 12px; border-radius: 4px; font-size: 0.75rem; cursor: pointer; transition: 0.2s;
+        }
+        .reset-btn:hover { background: #da3633; color: #fff; }
+
+        header { padding: 3rem 2rem; text-align: center; }
+        h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; color: #f0f6fc; margin-bottom: 0.5rem; }
+
+        .controls-wrapper { max-width: 1200px; margin: 1rem auto; display: flex; gap: 1rem; padding: 0 2rem; flex-wrap: wrap; }
+        .search-input, .filter-select {
+            flex: 1; padding: 0.8rem 1rem; border-radius: 6px; border: 1px solid var(--border-color);
+            background: #0d1117; color: #fff; font-family: var(--code-font); font-size: 0.9rem; min-width: 200px;
+        }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 0 2rem; }
+        
+        .table-wrapper { background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        
+        table { width: 100%; border-collapse: collapse; min-width: 700px; }
+        th { text-align: left; padding: 1rem; color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); background: #161b22; }
+        td { padding: 1rem; border-bottom: 1px solid var(--border-color); vertical-align: middle; font-size: 0.95rem; }
+        tr:hover { background: #21262d; }
+
+        .func-name { font-family: var(--code-font); color: var(--accent-blue); font-weight: 500; font-size: 1rem; }
+        .desc-text { font-size: 0.9rem; color: #8b949e; line-height: 1.5; }
+
+        /* Modal / SQL Editor */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: 0.2s; z-index: 2000; padding: 20px; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        
+        .notebook-window { 
+            width: 100%; max-width: 900px; background: #fff; border-radius: 8px; 
+            display: flex; flex-direction: column; height: 85vh; color: #000; 
+            overflow: hidden; box-shadow: 0 50px 100px rgba(0,0,0,0.5);
+        }
+        
+        .notebook-header { background: #1e1e1e; padding: 8px 20px; border-bottom: 1px solid #333; font-size: 0.85rem; color: #d4d4d4; display: flex; justify-content: space-between; align-items: center; }
+        .notebook-body { flex: 1; overflow-y: auto; padding: 30px; font-family: var(--code-font); font-size: 14px; background: #f5f5f5; }
+
+        .schema-container { margin-bottom: 25px; padding: 15px; background: #e8eaed; border-radius: 6px; border: 1px solid #ccc; font-family: sans-serif; }
+        .schema-title { font-size: 12px; font-weight: 700; color: #555; text-transform: uppercase; margin-bottom: 10px; }
+        .schema-tables { display: flex; gap: 20px; flex-wrap: wrap; }
+        .schema-table { flex: 1; min-width: 200px; background: #fff; border: 1px solid #ddd; border-radius: 4px; overflow: hidden; }
+        .schema-table-head { background: #d0d7de; padding: 6px 10px; font-weight: bold; font-size: 12px; border-bottom: 1px solid #c0c7ce; color: #24292f; }
+        .schema-table-body { overflow-x: auto; background: #fff; }
+
+        /* Context Tables (Base Data) */
+        .context-table { width: 100%; border-collapse: collapse; font-size: 12px; font-family: sans-serif; min-width: unset; }
+        .context-table th { background: #f6f8fa; color: #57606a; font-weight: 600; text-align: left; padding: 6px 10px; border-bottom: 1px solid #d0d7de; font-size: 11px; text-transform: none; letter-spacing: normal; border-right: 1px solid #e1e4e8; }
+        .context-table td { padding: 6px 10px; border-bottom: 1px solid #e1e4e8; border-right: 1px solid #e1e4e8; color: #24292f; }
+        .context-table tr:last-child td { border-bottom: none; }
+        .context-table th:last-child, .context-table td:last-child { border-right: none; }
+
+        .cell { margin-bottom: 25px; display: block; }
+        .cell-input { display: flex; flex-direction: column; gap: 5px; margin-bottom: 8px; }
+        .prompt { color: #888; user-select: none; font-size: 12px; font-family: sans-serif; font-weight: bold; }
+        .input-area { flex: 1; background: #1e1e1e; color: #d4d4d4; border-radius: 4px; padding: 15px; white-space: pre-wrap; line-height: 1.5; font-size: 14px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1); overflow-x: auto; }
+        .input-area.active { border-left: 4px solid var(--accent-blue); }
+        
+        .output-area { margin-top: 10px; font-family: sans-serif; font-size: 13px; color: #333; overflow-x: auto; background: #fff; padding: 15px; border: 1px solid #ddd; border-radius: 4px; }
+        .sql-msg { color: #2e7d32; font-family: var(--code-font); font-size: 13px; }
+        
+        .dataframe { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .dataframe th { background: #f5f5f5; color: #333; font-weight: 600; text-align: left; padding: 8px; border: 1px solid #ddd; border-bottom: 2px solid #ccc; white-space: nowrap; text-transform: none; letter-spacing: normal; }
+        .dataframe td { padding: 8px; border: 1px solid #ddd; white-space: nowrap; color: #333; }
+        .dataframe tr:nth-child(even) { background: #fafafa; }
+        .dataframe tr:hover { background: #f0f7ff; }
+
+        .sql-kw { color: #569cd6; font-weight: bold; }
+        .sql-str { color: #ce9178; }
+        .sql-num { color: #b5cea8; }
+        .sql-func { color: #dcdcaa; }
+
+        .play-btn { background: transparent; border: 1px solid var(--accent-blue); color: var(--accent-blue); width: 32px; height: 32px; border-radius: 4px; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .play-btn:hover { background: var(--accent-blue); color: #000; }
+        .checkbox-custom { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-blue); flex-shrink: 0; }
+
+        .fixed-footer {
+            position: fixed; bottom: 0; left: 0; width: 100%;
+            background: rgba(13, 17, 23, 0.95); backdrop-filter: blur(5px);
+            border-top: 1px solid var(--border-color);
+            padding: 1rem; text-align: center; font-size: 0.9rem; z-index: 1000;
+        }
+        .fixed-footer a { color: var(--accent-blue); text-decoration: none; font-weight: 600; }
+
+        /* --- MOBILE RESPONSIVE QUERIES --- */
+        @media (max-width: 768px) {
+            body { padding-top: 120px; }
+            header { padding: 1.5rem 1rem; }
+            .controls-wrapper { padding: 0 1rem; flex-direction: column; }
+            .search-input, .filter-select { width: 100%; min-width: unset; }
+            .container { padding: 0 1rem; }
+            
+            .modal-overlay { padding: 10px; }
+            .notebook-window { height: 95vh; }
+            .notebook-body { padding: 15px; }
+            .schema-tables { flex-direction: column; gap: 10px; }
+        }
+    </style>
+    
+    <script>
+      // 1. Get the User's IP Address
+      fetch('https://api.ipify.org?format=json')
+        .then(response => response.json())
+        .then(data => {
+          var userIP = data.ip;
+          var scriptURL = "https://script.google.com/macros/s/AKfycbyUv6HBTeWOo2YJsmnfEhUKujE2c7G9nEjcs-34k2xyAh-0c4BLCRMFMFPP6hOSvuVkEA/exec"; 
+          fetch(scriptURL, {
+            method: "POST", mode: "no-cors", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ ip: userIP })
+          }).catch(error => console.error("Error logging IP:", error));
+        }).catch(error => console.error('Error fetching IP:', error));
+    </script>
+</head>
+<body>
+
+    <div class="ambient-light"></div>
+
+    <div class="progress-container">
+        <span class="progress-info">SQL Mastery</span>
+        <div class="progress-bar-wrapper">
+            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+        </div>
+        <span id="progress-text" class="progress-info">0/48</span>
+        <button class="reset-btn" onclick="resetProgress()">Reset</button>
+    </div>
+
+    <header>
+        <h1>SQL Master</h1>
+        <p style="color: var(--text-secondary)">Exact syntax. Deep-tested logic. Verified SQL Outputs.</p>
+    </header>
+
+    <div class="controls-wrapper">
+        <input type="text" id="searchInput" class="search-input" placeholder="Search keyword...">
+        <select id="catFilter" class="filter-select">
+            <option value="all">All Categories</option>
+            <option value="DQL">1. Querying (DQL)</option>
+            <option value="DML">2. Manipulation (DML)</option>
+            <option value="DDL">3. Definition (DDL)</option>
+            <option value="Joins">4. Joins & Sets</option>
+            <option value="Logic">5. Filtering & Logic</option>
+            <option value="Advanced">6. Advanced / Window</option>
+            <option value="TCL_DCL">7. Transact & Control (TCL/DCL)</option>
+            <option value="Programmability">8. Programmability</option>
+        </select>
+    </div>
+
+    <div class="container">
+        <div class="table-wrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th width="50">✓</th>
+                        <th width="140">Category</th>
+                        <th width="180">Keyword</th>
+                        <th>Explanation</th>
+                        <th width="80">Demo</th>
+                    </tr>
+                </thead>
+                <tbody id="master-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal">
+        <div class="notebook-window">
+            <div class="notebook-header">
+                <span><span style="color:#38bdf8">▶</span> SQL Query Editor</span>
+                <button onclick="closeModal()" style="background:none; border:none; cursor:pointer; font-size:1.2rem; color:#fff;">×</button>
+            </div>
+            <div class="notebook-body">
+                
+                <div class="schema-container" id="schema-view">
+                    <div class="schema-title">Database Data Context:</div>
+                    <div class="schema-tables">
+                        <div class="schema-table">
+                            <div class="schema-table-head">📇 employees</div>
+                            <div class="schema-table-body">
+                                <table class="context-table">
+                                    <thead>
+                                        <tr><th>id</th><th>name</th><th>dept_id</th><th>salary</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td>1</td><td>Alice</td><td>101</td><td>70000</td></tr>
+                                        <tr><td>2</td><td>Bob</td><td>102</td><td>85000</td></tr>
+                                        <tr><td>3</td><td>Charlie</td><td>101</td><td>60000</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="schema-table" id="schema-dept" style="display:none;">
+                            <div class="schema-table-head">🏢 departments</div>
+                            <div class="schema-table-body">
+                                <table class="context-table">
+                                    <thead>
+                                        <tr><th>dept_id</th><th>dept_name</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td>101</td><td>IT</td></tr>
+                                        <tr><td>102</td><td>Sales</td></tr>
+                                        <tr><td>103</td><td>HR</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cell">
+                    <div class="cell-input">
+                        <div class="prompt" id="prompt-label">Query:</div>
+                        <div class="input-area active" id="code-box"></div>
+                    </div>
+                    <div class="prompt" style="margin-top: 15px;">Result:</div>
+                    <div class="output-area" id="output-box"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="fixed-footer">
+        Ideation & development <a href="https://github.com/edusatyaki" target="_blank">Satyaki Das</a> | SQL Innovation v_01.0.0
+    </footer>
+
+    <script>
+        // HTML TABLE GENERATOR FOR SQL RESULTS
+        function createSQLTable(headers, rows) {
+            let hHtml = headers.map(h => `<th>${h}</th>`).join('');
+            let rHtml = rows.map(r => {
+                let dHtml = r.map(d => `<td>${d === null ? '<i style="color:#aaa">NULL</i>' : d}</td>`).join('');
+                return `<tr>${dHtml}</tr>`;
+            }).join('');
+            return `<table class="dataframe"><thead><tr>${hHtml}</tr></thead><tbody>${rHtml}</tbody></table>`;
+        }
+
+        // SYNTAX HIGHLIGHTER HELPER
+        function highlightSQL(str) {
+            const keywords = ['SELECT','FROM','WHERE','GROUP BY','HAVING','ORDER BY','LIMIT','INSERT INTO','VALUES','UPDATE','SET','DELETE','CREATE TABLE','ALTER TABLE','DROP TABLE','TRUNCATE TABLE','JOIN','INNER JOIN','LEFT JOIN','RIGHT JOIN','FULL OUTER JOIN','ON','AS','DISTINCT','BETWEEN','AND','IN','LIKE','IS NULL','UNION','EXISTS','CASE','WHEN','THEN','ELSE','END','PRIMARY KEY','FOREIGN KEY','INDEX','VIEW','TRIGGER','PROCEDURE','FUNCTION','COMMIT','ROLLBACK','GRANT','REVOKE','WITH','OVER','PARTITION BY', 'COUNT', 'DESC', 'ASC', 'ADD COLUMN', 'REFERENCES', 'BEGIN', 'RETURNS', 'RETURN'];
+            
+            let highlighted = str;
+            // Basic naive highlighting for demo purposes
+            keywords.forEach(kw => {
+                const regex = new RegExp(`\\b${kw}\\b`, 'g');
+                highlighted = highlighted.replace(regex, `<span class="sql-kw">${kw}</span>`);
+            });
+            // highlight strings
+            highlighted = highlighted.replace(/'([^']+)'/g, `<span class="sql-str">'$1'</span>`);
+            // highlight numbers
+            highlighted = highlighted.replace(/\b(\d+)\b/g, `<span class="sql-num">$1</span>`);
+            
+            return highlighted;
+        }
+
+        const sqlMethods = [
+            // 1. DQL
+            { cat: 'DQL', name: 'SELECT', desc: 'Retrieve data from the database.', code: 'SELECT name, salary \nFROM employees;', out: createSQLTable(['name','salary'], [['Alice', 70000], ['Bob', 85000], ['Charlie', 60000]]) },
+            { cat: 'DQL', name: 'FROM', desc: 'Specify the table to pull data from.', code: 'SELECT * \nFROM employees;', out: createSQLTable(['id','name','dept_id','salary'], [[1, 'Alice', 101, 70000], [2, 'Bob', 102, 85000], [3, 'Charlie', 101, 60000]]) },
+            { cat: 'DQL', name: 'WHERE', desc: 'Filter records based on a condition.', code: 'SELECT name \nFROM employees \nWHERE salary > 65000;', out: createSQLTable(['name'], [['Alice'], ['Bob']]) },
+            { cat: 'DQL', name: 'GROUP BY', desc: 'Group rows sharing a property so aggregate functions can be applied.', code: 'SELECT dept_id, COUNT(*) \nFROM employees \nGROUP BY dept_id;', out: createSQLTable(['dept_id','COUNT(*)'], [[101, 2], [102, 1]]) },
+            { cat: 'DQL', name: 'HAVING', desc: 'Filter grouped records (like WHERE, but for groups).', code: 'SELECT dept_id, COUNT(*) \nFROM employees \nGROUP BY dept_id \nHAVING COUNT(*) > 1;', out: createSQLTable(['dept_id','COUNT(*)'], [[101, 2]]) },
+            { cat: 'DQL', name: 'ORDER BY', desc: 'Sort the result-set ascending or descending.', code: 'SELECT name, salary \nFROM employees \nORDER BY salary DESC;', out: createSQLTable(['name','salary'], [['Bob', 85000], ['Alice', 70000], ['Charlie', 60000]]) },
+            { cat: 'DQL', name: 'LIMIT', desc: 'Specify the maximum number of records to return.', code: 'SELECT name \nFROM employees \nORDER BY salary DESC \nLIMIT 1;', out: createSQLTable(['name'], [['Bob']]) },
+            { cat: 'DQL', name: 'DISTINCT', desc: 'Return only distinct (different) values.', code: 'SELECT DISTINCT dept_id \nFROM employees;', out: createSQLTable(['dept_id'], [[101], [102]]) },
+            { cat: 'DQL', name: 'AS', desc: 'Rename a column or table with an alias.', code: 'SELECT name AS EmployeeName \nFROM employees;', out: createSQLTable(['EmployeeName'], [['Alice'], ['Bob'], ['Charlie']]) },
+
+            // 2. DML
+            { cat: 'DML', name: 'INSERT', desc: 'Insert new data into a database.', code: "INSERT INTO employees (id, name, dept_id, salary) \nVALUES (4, 'David', 101, 62000);", out: '<span class="sql-msg">Query OK, 1 row affected.</span>' },
+            { cat: 'DML', name: 'UPDATE', desc: 'Update existing data within a table.', code: "UPDATE employees \nSET salary = 75000 \nWHERE name = 'Alice';", out: '<span class="sql-msg">Query OK, 1 row affected. Rows matched: 1  Changed: 1</span>' },
+            { cat: 'DML', name: 'DELETE', desc: 'Delete records from a database table.', code: "DELETE FROM employees \nWHERE name = 'Charlie';", out: '<span class="sql-msg">Query OK, 1 row affected.</span>' },
+
+            // 3. DDL
+            { cat: 'DDL', name: 'CREATE', desc: 'Create a new table, database, or schema.', code: "CREATE TABLE employees (\n  id INT PRIMARY KEY,\n  name VARCHAR(100),\n  salary DECIMAL\n);", out: '<span class="sql-msg">Query OK, 0 rows affected. Table created.</span>' },
+            { cat: 'DDL', name: 'ALTER', desc: 'Modify an existing database object.', code: "ALTER TABLE employees \nADD COLUMN hire_date DATE;", out: '<span class="sql-msg">Query OK, 0 rows affected. Records: 0  Duplicates: 0</span>' },
+            { cat: 'DDL', name: 'DROP', desc: 'Delete an entire table or database.', code: "DROP TABLE temporary_data;", out: '<span class="sql-msg">Query OK, 0 rows affected. Table dropped.</span>' },
+            { cat: 'DDL', name: 'TRUNCATE', desc: 'Empty a table completely but keep its structure.', code: "TRUNCATE TABLE system_logs;", out: '<span class="sql-msg">Query OK, 0 rows affected. Table truncated.</span>' },
+            { cat: 'DDL', name: 'PRIMARY KEY', desc: 'Uniquely identifies each record in a table.', code: "CREATE TABLE users (\n  id INT PRIMARY KEY,\n  username VARCHAR(50)\n);", out: '<span class="sql-msg">Query OK. Primary Key constraint applied.</span>' },
+            { cat: 'DDL', name: 'FOREIGN KEY', desc: 'Prevents actions that would destroy links between tables.', code: "CREATE TABLE orders (\n  order_id INT PRIMARY KEY,\n  emp_id INT,\n  FOREIGN KEY (emp_id) REFERENCES employees(id)\n);", out: '<span class="sql-msg">Query OK. Foreign Key constraint applied.</span>' },
+            { cat: 'DDL', name: 'INDEX', desc: 'Create an index to retrieve data faster.', code: "CREATE INDEX idx_emp_name \nON employees (name);", out: '<span class="sql-msg">Query OK, 0 rows affected. Index created.</span>' },
+            { cat: 'DDL', name: 'VIEW', desc: 'Create a virtual table based on the result-set of an SQL statement.', code: "CREATE VIEW HighEarners AS\nSELECT name, salary FROM employees \nWHERE salary > 80000;", out: '<span class="sql-msg">Query OK, 0 rows affected. View created.</span>' },
+
+            // 4. Joins & Sets
+            { cat: 'Joins', showDept: true, name: 'JOIN', desc: 'Standard inner join combined with ON.', code: "SELECT e.name, d.dept_name \nFROM employees e\nJOIN departments d ON e.dept_id = d.dept_id;", out: createSQLTable(['name','dept_name'], [['Alice','IT'], ['Bob','Sales'], ['Charlie','IT']]) },
+            { cat: 'Joins', showDept: true, name: 'INNER', desc: 'Returns records that have matching values in both tables.', code: "SELECT e.name, d.dept_name \nFROM employees e\nINNER JOIN departments d ON e.dept_id = d.dept_id;", out: createSQLTable(['name','dept_name'], [['Alice','IT'], ['Bob','Sales'], ['Charlie','IT']]) },
+            { cat: 'Joins', showDept: true, name: 'LEFT', desc: 'Returns all records from the left table, and the matched records from the right.', code: "SELECT e.name, d.dept_name \nFROM employees e\nLEFT JOIN departments d ON e.dept_id = d.dept_id;", out: createSQLTable(['name','dept_name'], [['Alice','IT'], ['Bob','Sales'], ['Charlie','IT']]) },
+            { cat: 'Joins', showDept: true, name: 'RIGHT', desc: 'Returns all records from the right table, and the matched records from the left.', code: "SELECT e.name, d.dept_name \nFROM employees e\nRIGHT JOIN departments d ON e.dept_id = d.dept_id;", out: createSQLTable(['name','dept_name'], [['Alice','IT'], ['Bob','Sales'], ['Charlie','IT'], [null, 'HR']]) },
+            { cat: 'Joins', showDept: true, name: 'FULL', desc: 'Returns all records when there is a match in either left or right table.', code: "SELECT e.name, d.dept_name \nFROM employees e\nFULL OUTER JOIN departments d ON e.dept_id = d.dept_id;", out: createSQLTable(['name','dept_name'], [['Alice','IT'], ['Bob','Sales'], ['Charlie','IT'], [null, 'HR']]) },
+            { cat: 'Joins', showDept: true, name: 'ON', desc: 'Specifies the matching condition for a JOIN.', code: "SELECT * FROM employees e \nJOIN departments d \nON e.dept_id = d.dept_id;", out: createSQLTable(['id','name','dept_id','salary','dept_name'], [[1,'Alice',101,70000,'IT'], [2,'Bob',102,85000,'Sales'], [3,'Charlie',101,60000,'IT']]) },
+            { cat: 'Joins', name: 'UNION', desc: 'Combines the result sets of two or more SELECT statements (removes duplicates).', code: "SELECT name FROM employees \nUNION \nSELECT name FROM contractors;", out: createSQLTable(['name'], [['Alice'], ['Bob'], ['Charlie'], ['Zack']]) },
+
+            // 5. Logic
+            { cat: 'Logic', name: 'BETWEEN', desc: 'Selects values within a given range.', code: "SELECT name, salary \nFROM employees \nWHERE salary BETWEEN 65000 AND 80000;", out: createSQLTable(['name','salary'], [['Alice', 70000]]) },
+            { cat: 'Logic', name: 'IN', desc: 'Allows you to specify multiple values in a WHERE clause.', code: "SELECT name \nFROM employees \nWHERE dept_id IN (101, 103);", out: createSQLTable(['name'], [['Alice'], ['Charlie']]) },
+            { cat: 'Logic', name: 'LIKE', desc: 'Search for a specified pattern in a column.', code: "SELECT name \nFROM employees \nWHERE name LIKE 'A%';", out: createSQLTable(['name'], [['Alice']]) },
+            { cat: 'Logic', showDept: true, name: 'IS NULL', desc: 'Test for empty (NULL) values.', code: "SELECT d.dept_name \nFROM departments d\nLEFT JOIN employees e ON d.dept_id = e.dept_id\nWHERE e.id IS NULL;", out: createSQLTable(['dept_name'], [['HR']]) },
+            { cat: 'Logic', name: 'EXISTS', desc: 'Test for the existence of any record in a subquery.', code: "SELECT name \nFROM employees e \nWHERE EXISTS (\n  SELECT 1 FROM departments d WHERE d.dept_id = e.dept_id\n);", out: createSQLTable(['name'], [['Alice'], ['Bob'], ['Charlie']]) },
+            { cat: 'Logic', name: 'CASE', desc: 'Goes through conditions and returns a value when met.', code: "SELECT name, \nCASE \n  WHEN salary > 75000 THEN 'High' \n  ELSE 'Standard' \nEND AS PayLevel \nFROM employees;", out: createSQLTable(['name','PayLevel'], [['Alice','Standard'], ['Bob','High'], ['Charlie','Standard']]) },
+            { cat: 'Logic', name: 'WHEN', desc: 'Specifies the condition in a CASE statement.', code: "-- Used inside CASE statement\nWHEN condition THEN result", out: '<span class="sql-msg">See CASE demonstration.</span>' },
+            { cat: 'Logic', name: 'THEN', desc: 'Specifies the result if WHEN is true.', code: "-- Used inside CASE statement\nWHEN condition THEN result", out: '<span class="sql-msg">See CASE demonstration.</span>' },
+            { cat: 'Logic', name: 'ELSE', desc: 'Specifies the fallback result in a CASE statement.', code: "-- Used inside CASE statement\nELSE default_result END", out: '<span class="sql-msg">See CASE demonstration.</span>' },
+            { cat: 'Logic', name: 'END', desc: 'Closes a CASE statement.', code: "CASE WHEN ... END", out: '<span class="sql-msg">See CASE demonstration.</span>' },
+
+            // 6. Advanced
+            { cat: 'Advanced', name: 'WITH', desc: 'Define Common Table Expressions (CTEs).', code: "WITH HighPay AS (\n  SELECT * FROM employees WHERE salary > 70000\n)\nSELECT name FROM HighPay;", out: createSQLTable(['name'], [['Bob']]) },
+            { cat: 'Advanced', name: 'OVER', desc: 'Determines the partitioning and ordering of a rowset before an analytical function is applied.', code: "SELECT name, salary, \nAVG(salary) OVER() AS avg_salary \nFROM employees;", out: createSQLTable(['name','salary','avg_salary'], [['Alice',70000,71666], ['Bob',85000,71666], ['Charlie',60000,71666]]) },
+            { cat: 'Advanced', name: 'PARTITION BY', desc: 'Divides the result set into partitions to which the window function is applied.', code: "SELECT name, dept_id, salary, \nAVG(salary) OVER(PARTITION BY dept_id) as dept_avg \nFROM employees;", out: createSQLTable(['name','dept_id','salary','dept_avg'], [['Alice',101,70000,65000], ['Charlie',101,60000,65000], ['Bob',102,85000,85000]]) },
+
+            // 7. TCL & DCL
+            { cat: 'TCL_DCL', name: 'COMMIT', desc: 'Save all transactions permanently.', code: "BEGIN;\nUPDATE employees SET salary = 90000 WHERE id = 2;\nCOMMIT;", out: '<span class="sql-msg">Transaction Committed successfully.</span>' },
+            { cat: 'TCL_DCL', name: 'ROLLBACK', desc: 'Undo transactions that have not been saved.', code: "BEGIN;\nDELETE FROM employees;\nROLLBACK;", out: '<span class="sql-msg">Transaction Rolled Back. Data restored.</span>' },
+            { cat: 'TCL_DCL', name: 'GRANT', desc: 'Give users access privileges to the database.', code: "GRANT SELECT, INSERT \nON employees \nTO 'user_analyst';", out: '<span class="sql-msg">Query OK. Privileges granted.</span>' },
+            { cat: 'TCL_DCL', name: 'REVOKE', desc: 'Withdraw users access privileges.', code: "REVOKE INSERT \nON employees \nFROM 'user_analyst';", out: '<span class="sql-msg">Query OK. Privileges revoked.</span>' },
+
+            // 8. Programmability
+            { cat: 'Programmability', name: 'TRIGGER', desc: 'SQL code that automatically executes in response to certain events.', code: "CREATE TRIGGER before_employee_update\nBEFORE UPDATE ON employees\nFOR EACH ROW\nSET NEW.last_updated = NOW();", out: '<span class="sql-msg">Query OK, 0 rows affected. Trigger created.</span>' },
+            { cat: 'Programmability', name: 'PROCEDURE', desc: 'A prepared SQL code that you can save and reuse over and over.', code: "CREATE PROCEDURE GiveRaise(IN emp_id INT)\nBEGIN\n  UPDATE employees SET salary = salary * 1.05 WHERE id = emp_id;\nEND;", out: '<span class="sql-msg">Query OK, 0 rows affected. Procedure compiled.</span>' },
+            { cat: 'Programmability', name: 'FUNCTION', desc: 'A stored program that returns a single value.', code: "CREATE FUNCTION GetTotalPayroll()\nRETURNS DECIMAL\nBEGIN\n  RETURN (SELECT SUM(salary) FROM employees);\nEND;", out: '<span class="sql-msg">Query OK, 0 rows affected. Function compiled.</span>' }
+        ];
+
+        document.getElementById('progress-text').textContent = `0/${sqlMethods.length}`;
+
+        function init() {
+            const body = document.getElementById('master-body');
+            sqlMethods.forEach((m, i) => {
+                const tr = document.createElement('tr');
+                tr.className = 'func-row';
+                tr.dataset.cat = m.cat;
+                tr.dataset.name = m.name.toLowerCase();
+                const isChecked = localStorage.getItem(`sql-v1-${m.name}`) === 'true';
+                
+                // Styling per category
+                let catColor = '#f97316'; 
+                if(m.cat === 'DQL') catColor = '#38bdf8';
+                if(m.cat === 'DML') catColor = '#238636';
+                if(m.cat === 'DDL') catColor = '#da3633';
+                if(m.cat === 'Joins') catColor = '#a371f7';
+                if(m.cat === 'Logic') catColor = '#e3b341';
+                if(m.cat === 'Advanced') catColor = '#00bcd4';
+
+                tr.innerHTML = `
+                    <td style="text-align:center"><input type="checkbox" class="checkbox-custom" ${isChecked ? 'checked' : ''} onchange="toggleRead('${m.name}', this)"></td>
+                    <td><span class="type-badge" style="color:${catColor}; border:1px solid ${catColor}; padding:2px 8px; border-radius:12px; font-size:0.7rem; font-weight:700;">${m.cat.replace('_', '/')}</span></td>
+                    <td class="func-name">${m.name}</td>
+                    <td class="desc-text">${m.desc}</td>
+                    <td><button class="play-btn" onclick="runDemo(${i})">▶</button></td>
+                `;
+                body.appendChild(tr);
+            });
+            updateProgress();
+        }
+
+        async function runDemo(i) {
+            const m = sqlMethods[i];
+            const codeBox = document.getElementById('code-box');
+            const outBox = document.getElementById('output-box');
+            const deptSchema = document.getElementById('schema-dept');
+
+            document.getElementById('modal').classList.add('active');
+            
+            // Adjust schema display based on join examples
+            if (m.showDept || m.cat === 'Joins') {
+                deptSchema.style.display = 'block';
+            } else {
+                deptSchema.style.display = 'none';
+            }
+
+            // Clear previous outputs
+            codeBox.innerHTML = '';
+            outBox.innerHTML = '';
+            
+            // Typewriter effect for code block
+            let rawCode = "";
+            for (let char of m.code) {
+                rawCode += char;
+                codeBox.innerHTML = highlightSQL(rawCode);
+                await new Promise(r => setTimeout(r, 8));
+            }
+            
+            await new Promise(r => setTimeout(r, 200));
+            outBox.innerHTML = m.out;
+        }
+
+        function toggleRead(name, el) {
+            localStorage.setItem(`sql-v1-${name}`, el.checked);
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const checked = document.querySelectorAll('.checkbox-custom:checked').length;
+            const pct = Math.round((checked / sqlMethods.length) * 100);
+            document.getElementById('progress-bar-fill').style.width = pct + '%';
+            document.getElementById('progress-text').textContent = `${checked}/${sqlMethods.length}`;
+        }
+
+        function resetProgress() {
+            if(confirm('Reset all progress?')) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        function closeModal() { document.getElementById('modal').classList.remove('active'); }
+
+        document.getElementById('searchInput').addEventListener('input', e => {
+            const q = e.target.value.toLowerCase();
+            document.querySelectorAll('.func-row').forEach(row => {
+                row.style.display = row.dataset.name.includes(q) ? '' : 'none';
+            });
+        });
+
+        document.getElementById('catFilter').addEventListener('change', e => {
+            const cat = e.target.value;
+            document.querySelectorAll('.func-row').forEach(row => {
+                row.style.display = (cat === 'all' || row.dataset.cat === cat) ? '' : 'none';
+            });
+        });
+
+        init();
+    </script>
+</body>
+</html>
